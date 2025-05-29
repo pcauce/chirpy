@@ -14,6 +14,7 @@ func main() {
 		Handler: mux,
 	}
 
-	log.Printf("Serving on port: %s\n", port)
+	mux.Handle("/", http.FileServer(http.Dir(".")))
+
 	log.Fatal(server.ListenAndServe())
 }
