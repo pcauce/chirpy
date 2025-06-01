@@ -1,15 +1,33 @@
 package main
 
 import (
+	"database/sql"
+	"github.com/joho/godotenv"
+	"github.com/pcauce/chirpy/internal/database"
 	"log"
 	"net/http"
+	"os"
 	"sync/atomic"
 )
 
+import _ "github.com/lib/pq"
+
 func main() {
-	const port = "8080"
+	godotenv.Load()
+	dbURL := os.Getenv("DB_URL")
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	dbQueries := database.New(db)
+
+	const (
+		port = "8080"
+	)
 	apiCfg := apiConfig{
 		fileserverHits: atomic.Int32{},
+		queries:        dbQueries,
+		platform:       os.Getenv("PLATFORM"),
 	}
 
 	mux := http.NewServeMux()
@@ -18,6 +36,7 @@ func main() {
 	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
 	mux.HandleFunc("POST /api/validate_chirp", handlerValidate)
+	mux.HandleFunc("POST /api/users", apiCfg.handlerUserCreate)
 
 	server := http.Server{
 		Addr:    ":" + port,
@@ -29,4 +48,6 @@ func main() {
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
+	queries        *database.Queries
+	platform       string
 }
