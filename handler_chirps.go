@@ -1,0 +1,85 @@
+package main
+
+import (
+	"encoding/json"
+	"github.com/google/uuid"
+	"github.com/pcauce/chirpy/internal/database"
+	"net/http"
+	"time"
+)
+
+type Chirp struct {
+	ID        uuid.UUID     `json:"id"`
+	CreatedAt time.Time     `json:"created_at"`
+	UpdatedAt time.Time     `json:"updated_at"`
+	Body      string        `json:"body"`
+	UserID    uuid.NullUUID `json:"user_id"`
+}
+
+func (cfg *apiConfig) handlerChirpCreate(w http.ResponseWriter, r *http.Request) {
+	chirpData := map[string]string{}
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&chirpData)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Couldn't decode JSON", err)
+		return
+	}
+
+	userId, err := uuid.Parse(chirpData["user_id"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "user_id isn't a valid UUID", err)
+		return
+	}
+
+	chirpRecord, err := cfg.queries.CreateChirp(r.Context(), database.CreateChirpParams{
+		Body:   chirpData["body"],
+		UserID: uuid.NullUUID{UUID: userId, Valid: true},
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't create chirp", err)
+		return
+	}
+	respondWithJSON(w, http.StatusCreated, Chirp{
+		ID:        chirpRecord.ID,
+		CreatedAt: chirpRecord.CreatedAt,
+		UpdatedAt: chirpRecord.UpdatedAt,
+		Body:      chirpRecord.Body,
+		UserID:    chirpRecord.UserID,
+	})
+}
+
+func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request) {
+	unformattedChirps, err := cfg.queries.GetAllChirps(r.Context())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't get chirps", err)
+		return
+	}
+
+	var formattedChirps []Chirp
+	for _, chirp := range unformattedChirps {
+		formattedChirps = append(formattedChirps, Chirp{
+			ID:        chirp.ID,
+			CreatedAt: chirp.CreatedAt,
+			UpdatedAt: chirp.UpdatedAt,
+			Body:      chirp.Body,
+			UserID:    chirp.UserID,
+		})
+	}
+	respondWithJSON(w, http.StatusOK, formattedChirps)
+}
+
+func (cfg *apiConfig) handlerGetChirp(w http.ResponseWriter, r *http.Request) {
+	chirp, err := cfg.queries.GetChirp(r.Context(), uuid.MustParse(r.PathValue("chirpID")))
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, "Couldn't get chirp", err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, Chirp{
+		ID:        chirp.ID,
+		CreatedAt: chirp.CreatedAt,
+		UpdatedAt: chirp.UpdatedAt,
+		Body:      chirp.Body,
+		UserID:    chirp.UserID,
+	})
+}
