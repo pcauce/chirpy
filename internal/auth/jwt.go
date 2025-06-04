@@ -1,8 +1,13 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"net/http"
+	"strings"
 	"time"
 )
 
@@ -31,4 +36,21 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 	}
 
 	return uuid.Parse(userID)
+}
+
+func GetBearerToken(headers http.Header) (string, error) {
+	token := headers.Get("Authorization")
+	if token == "" || !strings.HasPrefix(token, "Bearer ") || len(token) <= 7 {
+		return "", errors.New(token) // This is where you saw "Bearer"
+	}
+	return strings.TrimPrefix(token, "Bearer "), nil
+}
+
+func MakeRefreshToken() (string, error) {
+	tokenBytes := make([]byte, 32) // Create a byte slice with capacity for 32 bytes
+	_, err := rand.Read(tokenBytes)
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(tokenBytes), nil
 }

@@ -14,6 +14,8 @@ type User struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
+	Token     string    `json:"token"`
+	Refresh   string    `json:"refresh_token"`
 }
 
 func (cfg *apiConfig) handlerUserCreate(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +51,10 @@ func (cfg *apiConfig) handlerUserCreate(w http.ResponseWriter, r *http.Request) 
 }
 
 func (cfg *apiConfig) handlerUserLogin(w http.ResponseWriter, r *http.Request) {
-	loginData := map[string]string{}
+	loginData := struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}{}
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&loginData)
 	if err != nil {
@@ -57,10 +62,28 @@ func (cfg *apiConfig) handlerUserLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := cfg.queries.GetUserByEmail(r.Context(), loginData["email"])
-	if err != nil || auth.CheckPasswordHash(user.HashedPassword, loginData["password"]) != nil {
+	user, err := cfg.queries.GetUserByEmail(r.Context(), loginData.Email)
+	if err != nil || auth.CheckPasswordHash(user.HashedPassword, loginData.Password) != nil {
 		respondWithError(w, http.StatusUnauthorized, "Incorrect email or password", err)
 		return
+	}
+
+	newJwtToken, err := auth.MakeJWT(user.ID, cfg.jwtSecret, time.Hour)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't create JWT", err)
+	}
+
+	refreshToken, err := auth.MakeRefreshToken()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't create refresh token", err)
+	}
+	err = cfg.queries.StoreRefresh(r.Context(), database.StoreRefreshParams{
+		Token:     refreshToken,
+		UserID:    uuid.NullUUID{user.ID, true},
+		ExpiresAt: time.Now().Add(cfg.tokenDuration["refresh"]),
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't store refresh token in database", err)
 	}
 
 	respondWithJSON(w, http.StatusOK, User{
@@ -68,5 +91,7 @@ func (cfg *apiConfig) handlerUserLogin(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		Email:     user.Email,
+		Token:     newJwtToken,
+		Refresh:   refreshToken,
 	})
 }

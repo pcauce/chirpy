@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"github.com/google/uuid"
+	"github.com/pcauce/chirpy/internal/auth"
 	"github.com/pcauce/chirpy/internal/database"
 	"net/http"
 	"time"
@@ -17,23 +18,29 @@ type Chirp struct {
 }
 
 func (cfg *apiConfig) handlerChirpCreate(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized", err)
+		return
+	}
+
+	userID, err := auth.ValidateJWT(token, cfg.jwtSecret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized. JWT not valid", err)
+		return
+	}
+
 	chirpData := map[string]string{}
 	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&chirpData)
+	err = decoder.Decode(&chirpData)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Couldn't decode JSON", err)
 		return
 	}
 
-	userId, err := uuid.Parse(chirpData["user_id"])
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "user_id isn't a valid UUID", err)
-		return
-	}
-
 	chirpRecord, err := cfg.queries.CreateChirp(r.Context(), database.CreateChirpParams{
 		Body:   chirpData["body"],
-		UserID: uuid.NullUUID{UUID: userId, Valid: true},
+		UserID: uuid.NullUUID{UUID: userID, Valid: true},
 	})
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't create chirp", err)

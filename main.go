@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"sync/atomic"
+	"time"
 )
 
 import _ "github.com/lib/pq"
@@ -28,6 +29,11 @@ func main() {
 		fileserverHits: atomic.Int32{},
 		queries:        dbQueries,
 		platform:       os.Getenv("PLATFORM"),
+		jwtSecret:      os.Getenv("JWT_SECRET"),
+		tokenDuration: map[string]time.Duration{
+			"access":  time.Hour,
+			"refresh": time.Hour * 24 * 60,
+		},
 	}
 
 	mux := http.NewServeMux()
@@ -41,6 +47,8 @@ func main() {
 	mux.HandleFunc("GET /api/chirps", apiCfg.handlerGetAllChirps)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handlerGetChirp)
 	mux.HandleFunc("POST /api/login", apiCfg.handlerUserLogin)
+	mux.HandleFunc("POST /api/refresh", apiCfg.handlerIssueNewAccess)
+	mux.HandleFunc("POST /api/revoke", apiCfg.handlerRevokeAccess)
 
 	server := http.Server{
 		Addr:    ":" + port,
@@ -54,4 +62,6 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	queries        *database.Queries
 	platform       string
+	jwtSecret      string
+	tokenDuration  map[string]time.Duration
 }
