@@ -49,6 +49,9 @@ func main() {
 	mux.HandleFunc("POST /api/login", apiCfg.handlerUserLogin)
 	mux.HandleFunc("POST /api/refresh", apiCfg.handlerIssueNewAccess)
 	mux.HandleFunc("POST /api/revoke", apiCfg.handlerRevokeAccess)
+	mux.HandleFunc("PUT /api/users", apiCfg.handlerChangeCredentials)
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apiCfg.handlerDeleteChirp)
+	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.handlerPolkaWebhooks)
 
 	server := http.Server{
 		Addr:    ":" + port,

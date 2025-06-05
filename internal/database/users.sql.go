@@ -7,6 +7,9 @@ package database
 
 import (
 	"context"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 const createUser = `-- name: CreateUser :one
@@ -18,7 +21,7 @@ VALUES (
            $1,
            $2
        )
-RETURNING id, created_at, updated_at, email, hashed_password
+RETURNING id, created_at, updated_at, email, hashed_password, is_chirpy_red
 `
 
 type CreateUserParams struct {
@@ -35,12 +38,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.UpdatedAt,
 		&i.Email,
 		&i.HashedPassword,
+		&i.IsChirpyRed,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, created_at, updated_at, email, hashed_password
+SELECT id, created_at, updated_at, email, hashed_password, is_chirpy_red
 FROM users
 WHERE email = $1
 `
@@ -54,6 +58,84 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.UpdatedAt,
 		&i.Email,
 		&i.HashedPassword,
+		&i.IsChirpyRed,
 	)
 	return i, err
+}
+
+const updateUserEmail = `-- name: UpdateUserEmail :one
+UPDATE users
+SET email = $2
+WHERE id = $1
+RETURNING id, created_at, updated_at, email, is_chirpy_red
+`
+
+type UpdateUserEmailParams struct {
+	ID    uuid.UUID
+	Email string
+}
+
+type UpdateUserEmailRow struct {
+	ID          uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Email       string
+	IsChirpyRed bool
+}
+
+func (q *Queries) UpdateUserEmail(ctx context.Context, arg UpdateUserEmailParams) (UpdateUserEmailRow, error) {
+	row := q.db.QueryRowContext(ctx, updateUserEmail, arg.ID, arg.Email)
+	var i UpdateUserEmailRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.IsChirpyRed,
+	)
+	return i, err
+}
+
+const updateUserPassword = `-- name: UpdateUserPassword :one
+UPDATE users
+SET hashed_password = $2
+WHERE id = $1
+RETURNING id, created_at, updated_at, email, is_chirpy_red
+`
+
+type UpdateUserPasswordParams struct {
+	ID             uuid.UUID
+	HashedPassword string
+}
+
+type UpdateUserPasswordRow struct {
+	ID          uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Email       string
+	IsChirpyRed bool
+}
+
+func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (UpdateUserPasswordRow, error) {
+	row := q.db.QueryRowContext(ctx, updateUserPassword, arg.ID, arg.HashedPassword)
+	var i UpdateUserPasswordRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.IsChirpyRed,
+	)
+	return i, err
+}
+
+const upgradeChirpyRed = `-- name: UpgradeChirpyRed :exec
+UPDATE users
+SET is_chirpy_red = true
+WHERE id = $1
+`
+
+func (q *Queries) UpgradeChirpyRed(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, upgradeChirpyRed, id)
+	return err
 }

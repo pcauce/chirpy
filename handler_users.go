@@ -10,12 +10,13 @@ import (
 )
 
 type User struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
-	Token     string    `json:"token"`
-	Refresh   string    `json:"refresh_token"`
+	ID          uuid.UUID `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	Email       string    `json:"email"`
+	Token       string    `json:"token"`
+	Refresh     string    `json:"refresh_token"`
+	IsChirpyRed bool      `json:"is_chirpy_red"`
 }
 
 func (cfg *apiConfig) handlerUserCreate(w http.ResponseWriter, r *http.Request) {
@@ -43,10 +44,11 @@ func (cfg *apiConfig) handlerUserCreate(w http.ResponseWriter, r *http.Request) 
 	}
 
 	respondWithJSON(w, http.StatusCreated, User{
-		ID:        createdUser.ID,
-		CreatedAt: createdUser.CreatedAt,
-		UpdatedAt: createdUser.UpdatedAt,
-		Email:     createdUser.Email,
+		ID:          createdUser.ID,
+		CreatedAt:   createdUser.CreatedAt,
+		UpdatedAt:   createdUser.UpdatedAt,
+		Email:       createdUser.Email,
+		IsChirpyRed: createdUser.IsChirpyRed,
 	})
 }
 
@@ -87,11 +89,70 @@ func (cfg *apiConfig) handlerUserLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondWithJSON(w, http.StatusOK, User{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
-		Token:     newJwtToken,
-		Refresh:   refreshToken,
+		ID:          user.ID,
+		CreatedAt:   user.CreatedAt,
+		UpdatedAt:   user.UpdatedAt,
+		Email:       user.Email,
+		Token:       newJwtToken,
+		Refresh:     refreshToken,
+		IsChirpyRed: user.IsChirpyRed,
+	})
+}
+
+func (cfg *apiConfig) handlerChangeCredentials(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized", err)
+		return
+	}
+	userID, err := auth.ValidateJWT(token, cfg.jwtSecret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized. JWT not valid", err)
+		return
+	}
+
+	credentials := map[string]string{}
+	decoder := json.NewDecoder(r.Body)
+	err = decoder.Decode(&credentials)
+
+	rawPassword, ok := credentials["password"]
+	if !ok {
+		respondWithError(w, http.StatusBadRequest, "Password missing", err)
+		return
+	}
+	hashPassword, err := auth.HashPassword(rawPassword)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't hash password", err)
+		return
+	}
+	_, err = cfg.queries.UpdateUserPassword(r.Context(), database.UpdateUserPasswordParams{
+		ID:             userID,
+		HashedPassword: hashPassword,
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't update user password", err)
+		return
+	}
+
+	email, ok := credentials["email"]
+	if !ok {
+		respondWithError(w, http.StatusBadRequest, "Email missing", err)
+		return
+	}
+	user, err := cfg.queries.UpdateUserEmail(r.Context(), database.UpdateUserEmailParams{
+		ID:    userID,
+		Email: email,
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't update user password", err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, User{
+		ID:          user.ID,
+		CreatedAt:   user.CreatedAt,
+		UpdatedAt:   user.UpdatedAt,
+		Email:       user.Email,
+		IsChirpyRed: user.IsChirpyRed,
 	})
 }

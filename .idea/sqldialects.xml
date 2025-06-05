@@ -8,6 +8,7 @@
     <file url="file://$PROJECT_DIR$/sql/schema/002_table-chirps.sql" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/sql/schema/003_col-hpass.sql" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/sql/schema/004_table-refreshTokens.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/sql/schema/005_col-chirpyRed.sql" dialect="PostgreSQL" />
     <file url="PROJECT" dialect="PostgreSQL" />
   </component>
 </project>
