@@ -3,7 +3,7 @@
 //   sqlc v1.29.0
 // source: reset.sql
 
-package database
+package sqlc
 
 import (
 	"context"

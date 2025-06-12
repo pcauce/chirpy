@@ -1,12 +1,13 @@
-package main
+package handler
 
 import (
 	"encoding/json"
+	"github.com/pcauce/chirpy/server/respond"
 	"net/http"
 	"strings"
 )
 
-func handlerValidate(w http.ResponseWriter, r *http.Request) {
+func ValidateChirp(w http.ResponseWriter, r *http.Request) {
 	type chirpData struct {
 		Body string `json:"body"`
 	}
@@ -18,13 +19,13 @@ func handlerValidate(w http.ResponseWriter, r *http.Request) {
 	chirp := chirpData{}
 	err := decoder.Decode(&chirp)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Couldn't decode JSON", err)
+		respond.WithError(w, http.StatusBadRequest, "Couldn't decode JSON", err)
 		return
 	}
 
 	const maxChirpLength = 140
 	if len(chirp.Body) > maxChirpLength {
-		respondWithError(w, http.StatusBadRequest, "Chirp is too long", err)
+		respond.WithError(w, http.StatusBadRequest, "Chirp is too long", err)
 		return
 	}
 
@@ -33,7 +34,7 @@ func handlerValidate(w http.ResponseWriter, r *http.Request) {
 	}
 	cleanRes := cleanedResponse{Body: clean(chirp.Body, badWords)}
 
-	respondWithJSON(w, http.StatusOK, cleanRes)
+	respond.WithJSON(w, http.StatusOK, cleanRes)
 	return
 }
 

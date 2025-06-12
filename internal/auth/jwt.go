@@ -41,13 +41,13 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 func GetBearerToken(headers http.Header) (string, error) {
 	token := headers.Get("Authorization")
 	if token == "" || !strings.HasPrefix(token, "Bearer ") || len(token) <= 7 {
-		return "", errors.New(token) // This is where you saw "Bearer"
+		return "", errors.New("invalid token format. Should be 'Bearer <token>'")
 	}
 	return strings.TrimPrefix(token, "Bearer "), nil
 }
 
 func MakeRefreshToken() (string, error) {
-	tokenBytes := make([]byte, 32) // Create a byte slice with capacity for 32 bytes
+	tokenBytes := make([]byte, 32)
 	_, err := rand.Read(tokenBytes)
 	if err != nil {
 		return "", err

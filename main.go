@@ -1,70 +1,39 @@
 package main
 
 import (
-	"database/sql"
 	"github.com/joho/godotenv"
-	"github.com/pcauce/chirpy/internal/database"
+	"github.com/pcauce/chirpy/internal/config"
+	"github.com/pcauce/chirpy/server/handler"
 	"log"
 	"net/http"
-	"os"
-	"sync/atomic"
-	"time"
 )
 
 import _ "github.com/lib/pq"
 
 func main() {
-	godotenv.Load()
-	dbURL := os.Getenv("DB_URL")
-	db, err := sql.Open("postgres", dbURL)
+	err := godotenv.Load()
 	if err != nil {
-		log.Fatal(err)
-	}
-	dbQueries := database.New(db)
-
-	const (
-		port = "8080"
-	)
-	apiCfg := apiConfig{
-		fileserverHits: atomic.Int32{},
-		queries:        dbQueries,
-		platform:       os.Getenv("PLATFORM"),
-		jwtSecret:      os.Getenv("JWT_SECRET"),
-		tokenDuration: map[string]time.Duration{
-			"access":  time.Hour,
-			"refresh": time.Hour * 24 * 60,
-		},
+		log.Fatal("Error loading .env file")
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/app/", http.StripPrefix("/app", apiCfg.middlewareMetricsInc(http.FileServer(http.Dir(".")))))
-	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
-	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
-	mux.HandleFunc("GET /api/healthz", handlerReadiness)
-	mux.HandleFunc("POST /api/validate_chirp", handlerValidate)
-	mux.HandleFunc("POST /api/users", apiCfg.handlerUserCreate)
-	mux.HandleFunc("POST /api/chirps", apiCfg.handlerChirpCreate)
-	mux.HandleFunc("GET /api/chirps", apiCfg.handlerGetAllChirps)
-	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handlerGetChirp)
-	mux.HandleFunc("POST /api/login", apiCfg.handlerUserLogin)
-	mux.HandleFunc("POST /api/refresh", apiCfg.handlerIssueNewAccess)
-	mux.HandleFunc("POST /api/revoke", apiCfg.handlerRevokeAccess)
-	mux.HandleFunc("PUT /api/users", apiCfg.handlerChangeCredentials)
-	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apiCfg.handlerDeleteChirp)
-	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.handlerPolkaWebhooks)
+	mux.HandleFunc("POST /admin/reset", handler.ResetDatabase)
+	mux.HandleFunc("POST /api/users", handler.CreateUser)
+	mux.HandleFunc("PUT /api/users", handler.ChangeUserCredentials)
+	mux.HandleFunc("POST /api/login", handler.LoginUser)
+	mux.HandleFunc("POST /api/refresh", handler.IssueNewAccessToken)
+	mux.HandleFunc("POST /api/revoke", handler.RevokeAccessToken)
+	mux.HandleFunc("POST /api/chirps", handler.CreateChirp)
+	mux.HandleFunc("POST /api/validate_chirp", handler.ValidateChirp)
+	mux.HandleFunc("GET /api/chirps", handler.GetChirps)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", handler.GetChirpByID)
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", handler.DeleteChirp)
+	mux.HandleFunc("POST /api/polka/webhooks", handler.PolkaWebhooks)
 
 	server := http.Server{
-		Addr:    ":" + port,
+		Addr:    ":" + config.Port,
 		Handler: mux,
 	}
 
 	log.Fatal(server.ListenAndServe())
-}
-
-type apiConfig struct {
-	fileserverHits atomic.Int32
-	queries        *database.Queries
-	platform       string
-	jwtSecret      string
-	tokenDuration  map[string]time.Duration
 }
