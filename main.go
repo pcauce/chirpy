@@ -34,6 +34,7 @@ func main() {
 			"access":  time.Hour,
 			"refresh": time.Hour * 24 * 60,
 		},
+		polkaKey: os.Getenv("POLKA_KEY"),
 	}
 
 	mux := http.NewServeMux()
@@ -44,8 +45,8 @@ func main() {
 	mux.HandleFunc("POST /api/validate_chirp", handlerValidate)
 	mux.HandleFunc("POST /api/users", apiCfg.handlerUserCreate)
 	mux.HandleFunc("POST /api/chirps", apiCfg.handlerChirpCreate)
-	mux.HandleFunc("GET /api/chirps", apiCfg.handlerGetAllChirps)
-	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handlerGetChirp)
+	mux.HandleFunc("GET /api/chirps", apiCfg.handlerGetChirps)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handlerGetChirpByID)
 	mux.HandleFunc("POST /api/login", apiCfg.handlerUserLogin)
 	mux.HandleFunc("POST /api/refresh", apiCfg.handlerIssueNewAccess)
 	mux.HandleFunc("POST /api/revoke", apiCfg.handlerRevokeAccess)
@@ -67,4 +68,5 @@ type apiConfig struct {
 	platform       string
 	jwtSecret      string
 	tokenDuration  map[string]time.Duration
+	polkaKey       string
 }

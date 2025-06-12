@@ -6,6 +6,7 @@ import (
 	"github.com/pcauce/chirpy/internal/auth"
 	"github.com/pcauce/chirpy/internal/database"
 	"net/http"
+	"sort"
 	"time"
 )
 
@@ -55,6 +56,15 @@ func (cfg *apiConfig) handlerChirpCreate(w http.ResponseWriter, r *http.Request)
 	})
 }
 
+func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
+	switch r.URL.Query().Get("author_id") == "" {
+	case true:
+		cfg.handlerGetAllChirps(w, r)
+	case false:
+		cfg.handlerGetChirpsByAuthor(w, r)
+	}
+}
+
 func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request) {
 	unformattedChirps, err := cfg.queries.GetAllChirps(r.Context())
 	if err != nil {
@@ -72,11 +82,22 @@ func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request
 			UserID:    chirp.UserID,
 		})
 	}
+
+	sortOrder := r.URL.Query().Get("sort")
+	if sortOrder == "" || sortOrder == "asc" {
+		respondWithJSON(w, http.StatusOK, formattedChirps)
+		return
+	}
+
+	sort.Slice(formattedChirps, func(i, j int) bool {
+		return formattedChirps[i].CreatedAt.After(formattedChirps[j].CreatedAt)
+	})
+
 	respondWithJSON(w, http.StatusOK, formattedChirps)
 }
 
-func (cfg *apiConfig) handlerGetChirp(w http.ResponseWriter, r *http.Request) {
-	chirp, err := cfg.queries.GetChirp(r.Context(), uuid.MustParse(r.PathValue("chirpID")))
+func (cfg *apiConfig) handlerGetChirpByID(w http.ResponseWriter, r *http.Request) {
+	chirp, err := cfg.queries.GetChirpByID(r.Context(), uuid.MustParse(r.PathValue("chirpID")))
 	if err != nil {
 		respondWithError(w, http.StatusNotFound, "Couldn't get chirp", err)
 		return
@@ -89,6 +110,35 @@ func (cfg *apiConfig) handlerGetChirp(w http.ResponseWriter, r *http.Request) {
 		Body:      chirp.Body,
 		UserID:    chirp.UserID,
 	})
+}
+
+func (cfg *apiConfig) handlerGetChirpsByAuthor(w http.ResponseWriter, r *http.Request) {
+	authorID, err := uuid.Parse(r.URL.Query().Get("author_id"))
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Couldn't parse author ID", err)
+		return
+	}
+
+	unformattedChirps, err := cfg.queries.GetChirpsByAuthor(r.Context(), uuid.NullUUID{
+		UUID:  authorID,
+		Valid: true,
+	})
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, "Couldn't get chirps", err)
+		return
+	}
+
+	var formattedChirps []Chirp
+	for _, chirp := range unformattedChirps {
+		formattedChirps = append(formattedChirps, Chirp{
+			ID:        chirp.ID,
+			CreatedAt: chirp.CreatedAt,
+			UpdatedAt: chirp.UpdatedAt,
+			Body:      chirp.Body,
+			UserID:    chirp.UserID,
+		})
+	}
+	respondWithJSON(w, http.StatusOK, formattedChirps)
 }
 
 func (cfg *apiConfig) handlerDeleteChirp(w http.ResponseWriter, r *http.Request) {
@@ -109,7 +159,7 @@ func (cfg *apiConfig) handlerDeleteChirp(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	chirp, err := cfg.queries.GetChirp(r.Context(), chirpID)
+	chirp, err := cfg.queries.GetChirpByID(r.Context(), chirpID)
 	if err != nil {
 		respondWithError(w, http.StatusNotFound, "Couldn't get chirp", err)
 		return
