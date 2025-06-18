@@ -14,12 +14,16 @@ type apiConfig struct {
 	PolkaKey      string
 }
 
-var API = apiConfig{
-	Platform:  os.Getenv("PLATFORM"),
-	JWTSecret: os.Getenv("JWT_SECRET"),
-	TokenDuration: map[string]time.Duration{
-		"access":  time.Hour,
-		"refresh": time.Hour * 24 * 60,
-	},
-	PolkaKey: os.Getenv("POLKA_KEY"),
+var API apiConfig
+
+func Init() {
+	API = apiConfig{
+		Platform:  os.Getenv("PLATFORM"),
+		JWTSecret: os.Getenv("JWT_SECRET"),
+		TokenDuration: map[string]time.Duration{
+			"access":  time.Hour,
+			"refresh": time.Hour * 24 * 60,
+		},
+		PolkaKey: os.Getenv("POLKA_KEY"),
+	}
 }

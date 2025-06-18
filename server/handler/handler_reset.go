@@ -15,7 +15,7 @@ func ResetDatabase(w http.ResponseWriter, r *http.Request) {
 
 	err := database.Queries.DeleteAllUsers(r.Context())
 	if err != nil {
-		respond.WithError(w, http.StatusInternalServerError, "Couldn't reset sqlc", err)
+		respond.WithError(w, http.StatusInternalServerError, err.Error(), err)
 		return
 	}
 

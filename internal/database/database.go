@@ -7,13 +7,13 @@ import (
 	"os"
 )
 
-var connection = func() *sql.DB {
+var Queries *sqlc.Queries
+
+func Init() {
 	dbURL := os.Getenv("DB_URL")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatal(err)
 	}
-	return db
-}()
-
-var Queries = sqlc.New(connection)
+	Queries = sqlc.New(db)
+}

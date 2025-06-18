@@ -3,6 +3,7 @@
   <component name="SqlDialectMappings">
     <file url="file://$PROJECT_DIR$/sql/queries/auth.sql" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/sql/queries/chirps.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/sql/queries/reset.sql" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/sql/queries/users.sql" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/sql/schema/001_table-users.sql" dialect="PostgreSQL" />
     <file url="file://$PROJECT_DIR$/sql/schema/002_table-chirps.sql" dialect="PostgreSQL" />
