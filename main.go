@@ -1,9 +1,7 @@
 package main
 
 import (
-	"github.com/joho/godotenv"
 	"github.com/pcauce/chirpy/internal/config"
-	"github.com/pcauce/chirpy/internal/database"
 	"github.com/pcauce/chirpy/server/handler"
 	"log"
 	"net/http"
@@ -12,14 +10,6 @@ import (
 import _ "github.com/lib/pq"
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
-	config.Init()
-	database.Init()
-
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /admin/reset", handler.ResetDatabase)
 	mux.HandleFunc("POST /api/users", handler.CreateUser)

@@ -37,7 +37,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	createdUser, err := database.Queries.CreateUser(r.Context(), sqlc.CreateUserParams{
+	createdUser, err := database.Queries().CreateUser(r.Context(), sqlc.CreateUserParams{
 		Email:          userData["email"],
 		HashedPassword: hashedPassword,
 	})
@@ -67,13 +67,13 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := database.Queries.GetUserByEmail(r.Context(), loginData.Email)
+	user, err := database.Queries().GetUserByEmail(r.Context(), loginData.Email)
 	if err != nil || auth.CheckPasswordHash(user.HashedPassword, loginData.Password) != nil {
 		respond.WithError(w, http.StatusUnauthorized, "Incorrect email or password", err)
 		return
 	}
 
-	newJwtToken, err := auth.MakeJWT(user.ID, config.API.JWTSecret, time.Hour)
+	newJwtToken, err := auth.MakeJWT(user.ID, config.APIConfig().JWTSecret, time.Hour)
 	if err != nil {
 		respond.WithError(w, http.StatusInternalServerError, "Couldn't create JWT", err)
 	}
@@ -82,10 +82,10 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		respond.WithError(w, http.StatusInternalServerError, "Couldn't create refresh token", err)
 	}
-	err = database.Queries.StoreRefresh(r.Context(), sqlc.StoreRefreshParams{
+	err = database.Queries().StoreRefresh(r.Context(), sqlc.StoreRefreshParams{
 		Token:     refreshToken,
 		UserID:    uuid.NullUUID{UUID: user.ID, Valid: true},
-		ExpiresAt: time.Now().Add(config.API.TokenDuration["refresh"]),
+		ExpiresAt: time.Now().Add(config.APIConfig().TokenDuration["refresh"]),
 	})
 	if err != nil {
 		respond.WithError(w, http.StatusInternalServerError, "Couldn't store refresh token in sqlc", err)
@@ -108,7 +108,7 @@ func ChangeUserCredentials(w http.ResponseWriter, r *http.Request) {
 		respond.WithError(w, http.StatusUnauthorized, "Unauthorized", err)
 		return
 	}
-	userID, err := auth.ValidateJWT(token, config.API.JWTSecret)
+	userID, err := auth.ValidateJWT(token, config.APIConfig().JWTSecret)
 	if err != nil {
 		respond.WithError(w, http.StatusUnauthorized, "Unauthorized. JWT not valid", err)
 		return
@@ -128,7 +128,7 @@ func ChangeUserCredentials(w http.ResponseWriter, r *http.Request) {
 		respond.WithError(w, http.StatusInternalServerError, "Couldn't hash password", err)
 		return
 	}
-	_, err = database.Queries.UpdateUserPassword(r.Context(), sqlc.UpdateUserPasswordParams{
+	_, err = database.Queries().UpdateUserPassword(r.Context(), sqlc.UpdateUserPasswordParams{
 		ID:             userID,
 		HashedPassword: hashPassword,
 	})
@@ -142,7 +142,7 @@ func ChangeUserCredentials(w http.ResponseWriter, r *http.Request) {
 		respond.WithError(w, http.StatusBadRequest, "Email missing", err)
 		return
 	}
-	user, err := database.Queries.UpdateUserEmail(r.Context(), sqlc.UpdateUserEmailParams{
+	user, err := database.Queries().UpdateUserEmail(r.Context(), sqlc.UpdateUserEmailParams{
 		ID:    userID,
 		Email: email,
 	})

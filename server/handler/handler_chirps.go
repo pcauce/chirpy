@@ -28,7 +28,7 @@ func CreateChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, err := auth.ValidateJWT(token, config.API.JWTSecret)
+	userID, err := auth.ValidateJWT(token, config.APIConfig().JWTSecret)
 	if err != nil {
 		respond.WithError(w, http.StatusUnauthorized, "Unauthorized. JWT not valid", err)
 		return
@@ -42,7 +42,7 @@ func CreateChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chirpRecord, err := database.Queries.CreateChirp(r.Context(), sqlc.CreateChirpParams{
+	chirpRecord, err := database.Queries().CreateChirp(r.Context(), sqlc.CreateChirpParams{
 		Body:   chirpData["body"],
 		UserID: uuid.NullUUID{UUID: userID, Valid: true},
 	})
@@ -69,7 +69,7 @@ func GetChirps(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAllChirps(w http.ResponseWriter, r *http.Request) {
-	unformattedChirps, err := database.Queries.GetAllChirps(r.Context())
+	unformattedChirps, err := database.Queries().GetAllChirps(r.Context())
 	if err != nil {
 		respond.WithError(w, http.StatusInternalServerError, "Couldn't get chirps", err)
 		return
@@ -106,7 +106,7 @@ func GetChirpsByAuthor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	unformattedChirps, err := database.Queries.GetChirpsByAuthor(r.Context(), uuid.NullUUID{
+	unformattedChirps, err := database.Queries().GetChirpsByAuthor(r.Context(), uuid.NullUUID{
 		UUID:  authorID,
 		Valid: true,
 	})
@@ -129,7 +129,7 @@ func GetChirpsByAuthor(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetChirpByID(w http.ResponseWriter, r *http.Request) {
-	chirp, err := database.Queries.GetChirpByID(r.Context(), uuid.MustParse(r.PathValue("chirpID")))
+	chirp, err := database.Queries().GetChirpByID(r.Context(), uuid.MustParse(r.PathValue("chirpID")))
 	if err != nil {
 		respond.WithError(w, http.StatusNotFound, "Couldn't get chirp", err)
 		return
@@ -150,7 +150,7 @@ func DeleteChirp(w http.ResponseWriter, r *http.Request) {
 		respond.WithError(w, http.StatusUnauthorized, "Unauthorized", err)
 		return
 	}
-	userID, err := auth.ValidateJWT(token, config.API.JWTSecret)
+	userID, err := auth.ValidateJWT(token, config.APIConfig().JWTSecret)
 	if err != nil {
 		respond.WithError(w, http.StatusUnauthorized, "Unauthorized. JWT not valid", err)
 		return
@@ -162,7 +162,7 @@ func DeleteChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chirp, err := database.Queries.GetChirpByID(r.Context(), chirpID)
+	chirp, err := database.Queries().GetChirpByID(r.Context(), chirpID)
 	if err != nil {
 		respond.WithError(w, http.StatusNotFound, "Couldn't get chirp", err)
 		return
@@ -171,7 +171,7 @@ func DeleteChirp(w http.ResponseWriter, r *http.Request) {
 		respond.WithError(w, http.StatusForbidden, "Unauthorized. You can't delete this chirp", err)
 	}
 
-	err = database.Queries.DeleteChirp(r.Context(), sqlc.DeleteChirpParams{
+	err = database.Queries().DeleteChirp(r.Context(), sqlc.DeleteChirpParams{
 		ID: chirpID,
 		UserID: uuid.NullUUID{
 			UUID:  userID,

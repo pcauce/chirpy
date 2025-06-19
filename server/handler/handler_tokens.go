@@ -17,13 +17,13 @@ func IssueNewAccessToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, err := database.Queries.GetUserFromRefresh(r.Context(), token)
+	userID, err := database.Queries().GetUserFromRefresh(r.Context(), token)
 	if err != nil {
 		respond.WithError(w, http.StatusUnauthorized, "Unauthorized", err)
 		return
 	}
 
-	newAccess, err := auth.MakeJWT(userID.UUID, config.API.JWTSecret, config.API.TokenDuration["access"])
+	newAccess, err := auth.MakeJWT(userID.UUID, config.APIConfig().JWTSecret, config.APIConfig().TokenDuration["access"])
 	if err != nil {
 		respond.WithError(w, http.StatusInternalServerError, "Couldn't create JWT Access Token", err)
 	}
@@ -43,7 +43,7 @@ func RevokeAccessToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = database.Queries.RevokeRefresh(r.Context(), sqlc.RevokeRefreshParams{
+	err = database.Queries().RevokeRefresh(r.Context(), sqlc.RevokeRefreshParams{
 		Token:     token,
 		UpdatedAt: time.Now(),
 	})

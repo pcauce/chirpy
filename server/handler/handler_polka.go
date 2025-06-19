@@ -24,7 +24,7 @@ func PolkaWebhooks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if apiKey != config.API.PolkaKey {
+	if apiKey != config.APIConfig().PolkaKey {
 		respond.WithError(w, http.StatusUnauthorized, "Unauthorized", err)
 	}
 
@@ -44,7 +44,7 @@ func PolkaWebhooks(w http.ResponseWriter, r *http.Request) {
 
 	switch webhook.Event {
 	case "user.upgraded":
-		err = database.Queries.UpgradeChirpyRed(r.Context(), userID)
+		err = database.Queries().UpgradeChirpyRed(r.Context(), userID)
 		if err != nil {
 			respond.WithError(w, http.StatusNotFound, "Couldn't upgrade user", err)
 			return

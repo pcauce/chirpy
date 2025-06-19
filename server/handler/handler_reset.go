@@ -13,7 +13,7 @@ func ResetDatabase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := database.Queries.DeleteAllUsers(r.Context())
+	err := database.Queries().DeleteAllUsers(r.Context())
 	if err != nil {
 		respond.WithError(w, http.StatusInternalServerError, err.Error(), err)
 		return
